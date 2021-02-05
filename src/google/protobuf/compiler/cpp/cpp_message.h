@@ -82,9 +82,6 @@ class MessageGenerator {
 
   // Source file stuff.
 
-  // Generates code that creates default instances for fields.
-  void GenerateFieldDefaultInstances(io::Printer* printer);
-
   // Generate all non-inline methods for this class.
   void GenerateClassMethods(io::Printer* printer);
 
@@ -126,6 +123,10 @@ class MessageGenerator {
   void GenerateSharedDestructorCode(io::Printer* printer);
   // Generate the arena-specific destructor code.
   void GenerateArenaDestructorCode(io::Printer* printer);
+
+  // Generate the constexpr constructor for constant initialization of the
+  // default instance.
+  void GenerateConstexprConstructor(io::Printer* printer);
 
   // Generate standard Message methods.
   void GenerateClear(io::Printer* printer);

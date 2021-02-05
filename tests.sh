@@ -316,7 +316,7 @@ build_python() {
   else
     envlist=py\{27,36\}-python
   fi
-  tox -e $envlist
+  python -m tox -e $envlist
   cd ..
 }
 
@@ -324,7 +324,7 @@ build_python_version() {
   internal_build_cpp
   cd python
   envlist=$1
-  tox -e $envlist
+  python -m tox -e $envlist
   cd ..
 }
 
@@ -354,6 +354,10 @@ build_python37() {
 
 build_python38() {
   build_python_version py38-python
+}
+
+build_python39() {
+  build_python_version py39-python
 }
 
 build_python_cpp() {
@@ -408,6 +412,10 @@ build_python38_cpp() {
   build_python_cpp_version py38-cpp
 }
 
+build_python39_cpp() {
+  build_python_cpp_version py39-cpp
+}
+
 build_python_compatibility() {
   internal_build_cpp
   # Use the unit-tests extracted from 2.5.0 to test the compatibility.
@@ -441,6 +449,15 @@ build_ruby27() {
   internal_build_cpp  # For conformance tests.
   cd ruby && bash travis-test.sh ruby-2.7.0 && cd ..
 }
+build_ruby30() {
+  internal_build_cpp  # For conformance tests.
+  cd ruby && bash travis-test.sh ruby-3.0.0 && cd ..
+}
+
+build_jruby() {
+  internal_build_cpp  # For conformance tests.
+  cd ruby && bash travis-test.sh jruby-9.2.11.1 && cd ..
+}
 
 build_javascript() {
   internal_build_cpp
@@ -467,37 +484,8 @@ use_php_zts() {
   internal_build_cpp
 }
 
-build_php5.5() {
-  use_php 5.5
-
-  pushd php
-  rm -rf vendor
-  composer update
-  composer test
-  popd
-  (cd conformance && make test_php)
-}
-
 build_php5.6() {
   use_php 5.6
-  pushd php
-  rm -rf vendor
-  composer update
-  composer test
-  popd
-  (cd conformance && make test_php)
-}
-
-build_php5.6_mac() {
-  # Install PHP
-  curl -s https://php-osx.liip.ch/install.sh | bash -s 5.6
-  PHP_FOLDER=`find /usr/local -type d -name "php5-5.6*"`  # The folder name may change upon time
-  test ! -z "$PHP_FOLDER"
-  export PATH="$PHP_FOLDER/bin:$PATH"
-
-  internal_build_cpp
-
-  # Run pure-PHP tests only.
   pushd php
   rm -rf vendor
   composer update
@@ -517,16 +505,10 @@ build_php7.0() {
 }
 
 build_php7.0_c() {
-  IS_64BIT=$1
   use_php 7.0
   php/tests/test.sh
   pushd conformance
-  if [ "$IS_64BIT" = "true" ]
-  then
-    make test_php_c
-  else
-    make test_php_c_32
-  fi
+  make test_php_c
   popd
 }
 
@@ -542,16 +524,10 @@ build_php7.0_mixed() {
 }
 
 build_php7.0_zts_c() {
-  IS_64BIT=$1
   use_php_zts 7.0
   php/tests/test.sh
   pushd conformance
-  if [ "$IS_64BIT" = "true" ]
-  then
-    make test_php_c
-  else
-    make test_php_c_32
-  fi
+  make test_php_c
   popd
 }
 
@@ -614,16 +590,10 @@ build_php7.1() {
 }
 
 build_php7.1_c() {
-  IS_64BIT=$1
   use_php 7.1
   php/tests/test.sh
   pushd conformance
-  if [ "$IS_64BIT" = "true" ]
-  then
-    make test_php_c
-  else
-    make test_php_c_32
-  fi
+  make test_php_c
   popd
 }
 
@@ -639,16 +609,10 @@ build_php7.1_mixed() {
 }
 
 build_php7.1_zts_c() {
-  IS_64BIT=$1
   use_php_zts 7.1
   php/tests/test.sh
   pushd conformance
-  if [ "$IS_64BIT" = "true" ]
-  then
-    make test_php_c
-  else
-    make test_php_c_32
-  fi
+  make test_php_c
   popd
 }
 
@@ -663,16 +627,10 @@ build_php7.4() {
 }
 
 build_php7.4_c() {
-  IS_64BIT=$1
   use_php 7.4
   php/tests/test.sh
   pushd conformance
-  if [ "$IS_64BIT" = "true" ]
-  then
-    make test_php_c
-  else
-    make test_php_c_32
-  fi
+  make test_php_c
   popd
 }
 
@@ -688,16 +646,10 @@ build_php7.4_mixed() {
 }
 
 build_php7.4_zts_c() {
-  IS_64BIT=$1
   use_php_zts 7.4
   php/tests/test.sh
   pushd conformance
-  if [ "$IS_64BIT" = "true" ]
-  then
-    make test_php_c
-  else
-    make test_php_c_32
-  fi
+  make test_php_c
   popd
 }
 
@@ -712,16 +664,10 @@ build_php8.0() {
 }
 
 build_php8.0_c() {
-  IS_64BIT=$1
   use_php 8.0
   php/tests/test.sh
   pushd conformance
-  if [ "$IS_64BIT" = "true" ]
-  then
-    make test_php_c
-  else
-    make test_php_c_32
-  fi
+  make test_php_c
   popd
 }
 
@@ -747,7 +693,6 @@ build_php8.0_all() {
 }
 
 build_php_all_32() {
-  build_php5.5
   build_php5.6
   build_php7.0
   build_php7.1
@@ -801,16 +746,16 @@ Usage: $0 { cpp |
             ruby25 |
             ruby26 |
             ruby27 |
+            ruby30 |
             jruby |
             ruby_all |
-            php5.5   |
-            php5.6   |
             php7.0   |
             php7.0_c |
             php_compatibility |
             php7.1   |
             php7.1_c |
             php_all |
+            php8.0_all |
             dist_install |
             benchmark)
 "

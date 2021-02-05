@@ -44,6 +44,7 @@
 #include <google/protobuf/stubs/common.h>
 #include <google/protobuf/stubs/logging.h>
 #include <google/protobuf/compiler/cpp/cpp_options.h>
+#include <google/protobuf/compiler/cpp/cpp_names.h>
 #include <google/protobuf/descriptor.pb.h>
 #include <google/protobuf/descriptor.h>
 #include <google/protobuf/compiler/scc.h>
@@ -362,10 +363,16 @@ std::string QualifiedClassName(const EnumDescriptor* d) {
   return QualifiedClassName(d, Options());
 }
 
+std::string ExtensionName(const FieldDescriptor* d) {
+  if (const Descriptor* scope = d->extension_scope())
+    return StrCat(ClassName(scope), "::", ResolveKeyword(d->name()));
+  return ResolveKeyword(d->name());
+}
+
 std::string QualifiedExtensionName(const FieldDescriptor* d,
                                    const Options& options) {
   GOOGLE_DCHECK(d->is_extension());
-  return QualifiedFileLevelSymbol(d->file(), FieldName(d), options);
+  return QualifiedFileLevelSymbol(d->file(), ExtensionName(d), options);
 }
 
 std::string QualifiedExtensionName(const FieldDescriptor* d) {
@@ -516,11 +523,11 @@ std::string FieldMessageTypeName(const FieldDescriptor* field,
 }
 
 std::string StripProto(const std::string& filename) {
-  if (HasSuffixString(filename, ".protodevel")) {
-    return StripSuffixString(filename, ".protodevel");
-  } else {
-    return StripSuffixString(filename, ".proto");
-  }
+  /*
+   * TODO(github/georgthegreat) remove this proxy method
+   * once Google's internal codebase will become ready
+   */
+  return compiler::StripProto(filename);
 }
 
 const char* PrimitiveTypeName(FieldDescriptor::CppType type) {
@@ -785,25 +792,6 @@ std::string SafeFunctionName(const Descriptor* descriptor,
     function_name.append("_");
   }
   return function_name;
-}
-
-bool IsStringInlined(const FieldDescriptor* descriptor,
-                     const Options& options) {
-  if (options.opensource_runtime) return false;
-
-  // TODO(ckennelly): Handle inlining for any.proto.
-  if (IsAnyMessage(descriptor->containing_type(), options)) return false;
-  if (descriptor->containing_type()->options().map_entry()) return false;
-
-  // We rely on has bits to distinguish field presence for release_$name$.  When
-  // there is no hasbit, we cannot use the address of the string instance when
-  // the field has been inlined.
-  if (!HasHasbit(descriptor)) return false;
-
-  if (options.access_info_map) {
-    if (descriptor->is_required()) return true;
-  }
-  return false;
 }
 
 static bool HasLazyFields(const Descriptor* descriptor,
@@ -1168,11 +1156,6 @@ MessageAnalysis MessageSCCAnalyzer::GetSCCAnalysis(const SCC* scc) {
     const Descriptor* descriptor = scc->descriptors[i];
     if (descriptor->extension_range_count() > 0) {
       result.contains_extension = true;
-      // Extensions are found by looking up default_instance and extension
-      // number in a map. So you'd maybe expect here
-      // result.constructor_requires_initialization = true;
-      // However the extension registration mechanism already makes sure
-      // the default will be initialized.
     }
     for (int i = 0; i < descriptor->field_count(); i++) {
       const FieldDescriptor* field = descriptor->field(i);
@@ -1182,7 +1165,6 @@ MessageAnalysis MessageSCCAnalyzer::GetSCCAnalysis(const SCC* scc) {
       switch (field->type()) {
         case FieldDescriptor::TYPE_STRING:
         case FieldDescriptor::TYPE_BYTES: {
-          result.constructor_requires_initialization = true;
           if (field->options().ctype() == FieldOptions::CORD) {
             result.contains_cord = true;
           }
@@ -1190,7 +1172,6 @@ MessageAnalysis MessageSCCAnalyzer::GetSCCAnalysis(const SCC* scc) {
         }
         case FieldDescriptor::TYPE_GROUP:
         case FieldDescriptor::TYPE_MESSAGE: {
-          result.constructor_requires_initialization = true;
           const SCC* child = analyzer_.GetSCC(field->message_type());
           if (child != scc) {
             MessageAnalysis analysis = GetSCCAnalysis(child);
@@ -1470,8 +1451,7 @@ class ParseLoopGenerator {
         GetOptimizeFor(field->file(), options_) != FileOptions::LITE_RUNTIME &&
         // For now only use arena string for strings with empty defaults.
         field->default_value_string().empty() &&
-        !IsStringInlined(field, options_) && !field->real_containing_oneof() &&
-        ctype == FieldOptions::STRING) {
+        !field->real_containing_oneof() && ctype == FieldOptions::STRING) {
       GenerateArenaString(field);
     } else {
       std::string name;

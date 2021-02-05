@@ -162,7 +162,7 @@ size_t Message::SpaceUsedLong() const {
   return GetReflection()->SpaceUsedLong(*this);
 }
 
-size_t Message::GetInvariantPerBuild(size_t salt) {
+uint64 Message::GetInvariantPerBuild(uint64 salt) {
   return salt;
 }
 
@@ -175,10 +175,10 @@ namespace {
 
 
 #define HASH_MAP std::unordered_map
-#define STR_HASH_FXN hash<const char*>
+#define STR_HASH_FXN hash<::google::protobuf::StringPiece>
 
 
-class GeneratedMessageFactory : public MessageFactory {
+class GeneratedMessageFactory final : public MessageFactory {
  public:
   static GeneratedMessageFactory* singleton();
 
@@ -190,8 +190,8 @@ class GeneratedMessageFactory : public MessageFactory {
 
  private:
   // Only written at static init time, so does not require locking.
-  HASH_MAP<const char*, const google::protobuf::internal::DescriptorTable*, STR_HASH_FXN,
-           streq>
+  HASH_MAP<StringPiece, const google::protobuf::internal::DescriptorTable*,
+           STR_HASH_FXN>
       file_map_;
 
   internal::WrappedMutex mutex_;
@@ -363,3 +363,5 @@ PROTOBUF_NOINLINE
 
 }  // namespace protobuf
 }  // namespace google
+
+#include <google/protobuf/port_undef.inc>

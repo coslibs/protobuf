@@ -28,19 +28,39 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-#ifndef PHP_PROTOBUF_BUNDLED_PHP_H_
-#define PHP_PROTOBUF_BUNDLED_PHP_H_
+#ifndef RUBY_PROTOBUF_MAP_H_
+#define RUBY_PROTOBUF_MAP_H_
 
-// We embed PHP source code into the binary for things we don't want to
-// implement in C. This struct serves as a table of contents for all of
-// the embedded files.
-typedef struct {
-  const char *filename;
-  const char *contents;
-} BundledPhp_File;
+#include <ruby/ruby.h>
 
-// An array of all the embedded file structs. This array is terminated with a
-// {NULL, NULL} entry.
-extern BundledPhp_File *bundled_files;
+#include "protobuf.h"
+#include "ruby-upb.h"
 
-#endif  // PHP_PROTOBUF_BUNDLED_PHP_H_
+// Returns a Ruby wrapper object for the given map, which will be created if
+// one does not exist already.
+VALUE Map_GetRubyWrapper(upb_map *map, upb_fieldtype_t key_type,
+                         TypeInfo value_type, VALUE arena);
+
+// Gets the underlying upb_map for this Ruby map object, which must have
+// key/value type that match |field|. If this is not a map or the type doesn't
+// match, raises an exception.
+const upb_map *Map_GetUpbMap(VALUE val, const upb_fielddef *field);
+
+// Implements #inspect for this map by appending its contents to |b|.
+void Map_Inspect(StringBuilder *b, const upb_map *map, upb_fieldtype_t key_type,
+                 TypeInfo val_type);
+
+// Returns a new Hash object containing the contents of this Map.
+VALUE Map_CreateHash(const upb_map* map, upb_fieldtype_t key_type,
+                     TypeInfo val_info);
+
+// Returns a deep copy of this Map object.
+VALUE Map_deep_copy(VALUE obj);
+
+// Ruby class of Google::Protobuf::Map.
+extern VALUE cMap;
+
+// Call at startup to register all types in this module.
+void Map_register(VALUE module);
+
+#endif  // RUBY_PROTOBUF_MAP_H_
